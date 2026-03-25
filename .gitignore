@@ -51,3 +51,19 @@ Thumbs.db
 # Local environment secrets
 .env
 .env.local
+
+# ─── Large data & model folders (kept locally, NOT pushed to GitHub) ───
+dataset/
+model/
+venv/
+
+# Build outputs
+build/
+
+# Large binary / data file types
+*.h5
+*.pt
+*.pth
+*.zip
+*.mp4
+*.csv
