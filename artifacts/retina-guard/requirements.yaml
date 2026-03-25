@@ -1,0 +1,23 @@
+packages:
+  "framer-motion": "For smooth page transitions and scanning animations"
+  "recharts": "For advanced analytics dashboard charts"
+  "date-fns": "For formatting dates in medical reports"
+  "clsx": "Utility for constructing className strings"
+  "tailwind-merge": "Utility for merging tailwind classes safely"
+  "react-hook-form": "For robust form handling and validation"
+
+images:
+  - path: "artifacts/retina-guard/public/images/logo-icon.png"
+    description: "Minimalist glowing teal clinical eye logo icon on transparent background, high tech medical AI style, professional healthcare branding"
+    aspect_ratio: "1:1"
+  - path: "artifacts/retina-guard/public/images/login-bg.png"
+    description: "Abstract medical technology background with glowing neural network lines and a stylized human eye, deep navy and teal colors, clinical professional feel"
+    aspect_ratio: "16:9"
+  - path: "artifacts/retina-guard/public/images/retina-demo.png"
+    description: "High quality medical fundus photograph of a human retina, showing clear blood vessels, macula, and optic disc, typical of what a doctor would analyze"
+    aspect_ratio: "1:1"
+
+notes:
+  - "Assuming wouter is used for routing"
+  - "Assuming generated hooks from @workspace/api-client-react are available"
+  - "Assuming authentication is strictly client-side demo logic using localStorage"

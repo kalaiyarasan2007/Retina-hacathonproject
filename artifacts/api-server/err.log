@@ -1,0 +1,6 @@
+Error: Failed query: insert into "patients" ("id", "name", "age", "gender", "diabetes_type", "contact_info", "created_at") values (default, $1, $2, $3, $4, $5, default) returning "id", "name", "age", "gender", "diabetes_type", "contact_info", "created_at"
+params: MADHU,65,female,,6383458069
+    at NodePgPreparedQuery.queryWithCache (C:\Users\kalaiyarasan k\RetinaeyeDedectProject\node_modules\.pnpm\drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0\node_modules\src\pg-core\session.ts:73:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async <anonymous> (C:\Users\kalaiyarasan k\RetinaeyeDedectProject\node_modules\.pnpm\drizzle-orm@0.45.1_@types+pg@8.18.0_pg@8.20.0\node_modules\src\node-postgres\session.ts:154:19)
+    at async <anonymous> (C:\Users\kalaiyarasan k\RetinaeyeDedectProject\artifacts\api-server\src\routes\patients.ts:33:23)

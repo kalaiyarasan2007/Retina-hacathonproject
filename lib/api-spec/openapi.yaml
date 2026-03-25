@@ -1,0 +1,524 @@
+openapi: 3.1.0
+info:
+  # Do not change the title, if the title changes, the import paths will be broken
+  title: Api
+  version: 0.1.0
+  description: RetinaGuard AI API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: patients
+    description: Patient management
+  - name: scans
+    description: Scan and diagnosis operations
+  - name: reports
+    description: Medical report operations
+  - name: analytics
+    description: Analytics and statistics
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /patients:
+    get:
+      operationId: getPatients
+      tags: [patients]
+      summary: List all patients
+      responses:
+        "200":
+          description: List of patients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Patient"
+    post:
+      operationId: createPatient
+      tags: [patients]
+      summary: Create a new patient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePatientInput"
+      responses:
+        "201":
+          description: Patient created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /patients/{id}:
+    get:
+      operationId: getPatient
+      tags: [patients]
+      summary: Get a single patient
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Patient record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Patient"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deletePatient
+      tags: [patients]
+      summary: Delete a patient
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Patient deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /scans:
+    get:
+      operationId: getScans
+      tags: [scans]
+      summary: List scans
+      parameters:
+        - name: patientId
+          in: query
+          required: false
+          schema:
+            type: ["integer", "null"]
+      responses:
+        "200":
+          description: List of scans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Scan"
+
+  /scans/analyze:
+    post:
+      operationId: analyzeScan
+      tags: [scans]
+      summary: Analyze retinal image for DR
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyzeScanInput"
+      responses:
+        "201":
+          description: Analysis result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /scans/{id}:
+    get:
+      operationId: getScan
+      tags: [scans]
+      summary: Get a single scan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Scan record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateScan
+      tags: [scans]
+      summary: Doctor updates a scan (confirm, add notes)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScanInput"
+      responses:
+        "200":
+          description: Updated scan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Scan"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteScan
+      tags: [scans]
+      summary: Delete a scan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Scan deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  message:
+                    type: string
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reports/{scanId}:
+    get:
+      operationId: getReport
+      tags: [reports]
+      summary: Get report data for a scan
+      parameters:
+        - name: scanId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Report data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Report"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/summary:
+    get:
+      operationId: getAnalyticsSummary
+      tags: [analytics]
+      summary: Get analytics summary
+      responses:
+        "200":
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsSummary"
+
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Patient:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        age:
+          type: integer
+        gender:
+          type: string
+          enum: [male, female, other]
+        diabetesType:
+          type: ["string", "null"]
+          enum: [type1, type2, gestational, null]
+        contactInfo:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - age
+        - gender
+        - diabetesType
+        - contactInfo
+        - createdAt
+
+    CreatePatientInput:
+      type: object
+      properties:
+        name:
+          type: string
+        age:
+          type: integer
+          minimum: 1
+          maximum: 120
+        gender:
+          type: string
+          enum: [male, female, other]
+        diabetesType:
+          type: ["string", "null"]
+          enum: [type1, type2, gestational, null]
+        contactInfo:
+          type: ["string", "null"]
+      required:
+        - name
+        - age
+        - gender
+
+    Scan:
+      type: object
+      properties:
+        id:
+          type: integer
+        patientId:
+          type: integer
+        patientName:
+          type: ["string", "null"]
+        imageData:
+          type: ["string", "null"]
+        drStage:
+          type: integer
+          minimum: 0
+          maximum: 4
+        confidenceScore:
+          type: number
+          minimum: 0
+          maximum: 1
+        riskLevel:
+          type: string
+          enum: [low, medium, high, critical]
+        blindnessRiskScore:
+          type: integer
+          minimum: 0
+          maximum: 100
+        heatmapData:
+          type: ["string", "null"]
+        doctorConfirmed:
+          type: boolean
+        doctorNotes:
+          type: ["string", "null"]
+        doctorId:
+          type: ["string", "null"]
+        recommendation:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - patientId
+        - patientName
+        - imageData
+        - drStage
+        - confidenceScore
+        - riskLevel
+        - blindnessRiskScore
+        - heatmapData
+        - doctorConfirmed
+        - doctorNotes
+        - doctorId
+        - recommendation
+        - createdAt
+
+    AnalyzeScanInput:
+      type: object
+      properties:
+        patientId:
+          type: integer
+        imageData:
+          type: string
+          description: Base64-encoded image or image URL
+      required:
+        - patientId
+        - imageData
+
+    UpdateScanInput:
+      type: object
+      properties:
+        doctorConfirmed:
+          type: ["boolean", "null"]
+        doctorNotes:
+          type: ["string", "null"]
+        doctorId:
+          type: ["string", "null"]
+
+    Report:
+      type: object
+      properties:
+        scan:
+          $ref: "#/components/schemas/Scan"
+        patient:
+          $ref: "#/components/schemas/Patient"
+        generatedAt:
+          type: string
+          format: date-time
+        drStageName:
+          type: string
+        riskDescription:
+          type: string
+        treatmentPlan:
+          type: string
+      required:
+        - scan
+        - patient
+        - generatedAt
+        - drStageName
+        - riskDescription
+        - treatmentPlan
+
+    DrStageDistribution:
+      type: object
+      properties:
+        stage:
+          type: integer
+        stageName:
+          type: string
+        count:
+          type: integer
+      required:
+        - stage
+        - stageName
+        - count
+
+    RiskBreakdown:
+      type: object
+      properties:
+        level:
+          type: string
+        count:
+          type: integer
+        percentage:
+          type: number
+      required:
+        - level
+        - count
+        - percentage
+
+    AnalyticsSummary:
+      type: object
+      properties:
+        totalPatients:
+          type: integer
+        totalScans:
+          type: integer
+        confirmedScans:
+          type: integer
+        criticalCases:
+          type: integer
+        averageConfidence:
+          type: number
+        drStageDistribution:
+          type: array
+          items:
+            $ref: "#/components/schemas/DrStageDistribution"
+        riskBreakdown:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskBreakdown"
+        recentScans:
+          type: array
+          items:
+            $ref: "#/components/schemas/Scan"
+      required:
+        - totalPatients
+        - totalScans
+        - confirmedScans
+        - criticalCases
+        - averageConfidence
+        - drStageDistribution
+        - riskBreakdown
+        - recentScans

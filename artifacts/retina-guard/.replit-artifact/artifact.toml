@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "RetinaGuard AI"
+version = "1.0.0"
+id = "artifacts/retina-guard"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+localPort = 20096
+name = "web"
+paths = ["/"]
+
+[services.development]
+run = "pnpm --filter @workspace/retina-guard run dev"
+
+[services.env]
+PORT = "20096"
+BASE_PATH = "/"
+
+[services.production]
+build = ["pnpm", "--filter", "@workspace/retina-guard", "run", "build"]
+publicDir = "artifacts/retina-guard/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
