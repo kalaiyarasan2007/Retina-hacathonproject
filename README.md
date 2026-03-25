@@ -9,13 +9,15 @@ It takes retinal images as input and predicts the condition of the eye.
 
 ## 📥 Download Required Files
 
-Download the model and dataset from Google Drive:
+Download the required files from Google Drive:
 
-**Model:**
-https://drive.google.com/file/d/1i8JosMlwbz0f73f6GvGsKpNmWh_mYImp/view?usp=drive_link
+### 🔹 Model
 
-**Dataset (FULL FOLDER):**
-https://drive.google.com/file/d/1UQokg5Ao2J57fdMLxmKE5izKltLhnbkr/view?usp=drive_link
+https://drive.google.com/file/d/1qQ7PNXJ5_7aAzphrdj4lJFxoI8S6ljrT/view?usp=drive_link
+
+### 🔹 Dataset (FULL FOLDER)
+
+https://drive.google.com/drive/folders/1hMJz5whx_XiS96nyLFlRhX24wtHMBYE7?usp=drive_link
 
 ---
 
@@ -27,9 +29,12 @@ git clone https://github.com/kalaiyarasan2007/Retina-hacathonproject.git
 
 ---
 
-### 2. Download model and dataset
+### 2. Download files
 
-Download both files from the links above.
+Download:
+
+* Model file
+* Dataset folder (FULL)
 
 ---
 
@@ -40,15 +45,15 @@ After downloading:
 1. Place model file:
    model/dr_model.h5
 
-2. Extract dataset folder and place like this:
+2. Place dataset folder like this:
 
 dataset/trainLabels.csv
 dataset/resized_train/
 
-Make sure the dataset folder contains BOTH:
+Make sure:
 
-* trainLabels.csv
-* resized_train (images folder)
+* `trainLabels.csv` is inside dataset
+* `resized_train` contains all images
 
 ---
 
@@ -80,9 +85,10 @@ RETINA-EYE PROJECT/
 
 ## ⚠️ Important Notes
 
-* Model and dataset are not included in GitHub due to size limitations
-* Download and extract dataset properly before running
-* Incorrect folder structure will cause errors
+* Model and dataset are NOT included in GitHub
+* Download both before running
+* Dataset must be downloaded as a folder
+* Wrong structure will cause errors
 
 ---
 
