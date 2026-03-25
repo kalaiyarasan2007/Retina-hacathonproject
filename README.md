@@ -2,7 +2,7 @@
 
 ## 📌 Project Description
 
-This project is used to detect Diabetic Retinopathy using Deep Learning.
+This project detects **Diabetic Retinopathy** using Deep Learning.
 It takes retinal images as input and predicts the condition of the eye.
 
 ---
@@ -11,10 +11,10 @@ It takes retinal images as input and predicts the condition of the eye.
 
 Download the model and dataset from Google Drive:
 
-Model:
+**Model:**
 https://drive.google.com/file/d/1i8JosMlwbz0f73f6GvGsKpNmWh_mYImp/view?usp=drive_link
 
-Dataset:
+**Dataset:**
 https://drive.google.com/file/d/1qQ7PNXJ5_7aAzphrdj4lJFxoI8S6ljrT/view?usp=drive_link
 
 ---
@@ -25,9 +25,13 @@ https://drive.google.com/file/d/1qQ7PNXJ5_7aAzphrdj4lJFxoI8S6ljrT/view?usp=drive
 
 git clone https://github.com/kalaiyarasan2007/Retina-hacathonproject.git
 
+---
+
 ### 2. Download model and dataset
 
 Download both files from the links above.
+
+---
 
 ### 3. Place files correctly
 
@@ -69,14 +73,14 @@ RETINA-EYE PROJECT/
 ## ⚠️ Important Notes
 
 * Model and dataset are not included in GitHub due to size limitations
-* Always download them from Google Drive before running
+* Download them from Google Drive before running
 * Ensure correct folder structure
 
 ---
 
 ## 🚀 Output
 
-The model predicts the stage of Diabetic Retinopathy based on input image.
+The model predicts the stage of Diabetic Retinopathy from retinal images.
 
 ---
 
