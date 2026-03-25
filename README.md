@@ -2,7 +2,7 @@
 
 ## 📌 Project Description
 
-This project detects **Diabetic Retinopathy** using Deep Learning.
+This project detects Diabetic Retinopathy using Deep Learning.
 It takes retinal images as input and predicts the condition of the eye.
 
 ---
@@ -14,8 +14,8 @@ Download the model and dataset from Google Drive:
 **Model:**
 https://drive.google.com/file/d/1i8JosMlwbz0f73f6GvGsKpNmWh_mYImp/view?usp=drive_link
 
-**Dataset:**
-https://drive.google.com/file/d/1qQ7PNXJ5_7aAzphrdj4lJFxoI8S6ljrT/view?usp=drive_link
+**Dataset (FULL FOLDER):**
+https://drive.google.com/file/d/1UQokg5Ao2J57fdMLxmKE5izKltLhnbkr/view?usp=drive_link
 
 ---
 
@@ -35,12 +35,20 @@ Download both files from the links above.
 
 ### 3. Place files correctly
 
-Place them inside the project like this:
+After downloading:
 
-model/dr_model.h5
+1. Place model file:
+   model/dr_model.h5
+
+2. Extract dataset folder and place like this:
+
 dataset/trainLabels.csv
+dataset/resized_train/
 
-Make sure files are placed exactly in these folders.
+Make sure the dataset folder contains BOTH:
+
+* trainLabels.csv
+* resized_train (images folder)
 
 ---
 
@@ -62,19 +70,19 @@ RETINA-EYE PROJECT/
 ├── model/
 │   └── dr_model.h5
 ├── dataset/
-│   └── trainLabels.csv
+│   ├── trainLabels.csv
+│   └── resized_train/
+│        ├── images...
 ├── predict.py
 ├── requirements.txt
-├── backend/
-├── lib/
 
 ---
 
 ## ⚠️ Important Notes
 
 * Model and dataset are not included in GitHub due to size limitations
-* Download them from Google Drive before running
-* Ensure correct folder structure
+* Download and extract dataset properly before running
+* Incorrect folder structure will cause errors
 
 ---
 
