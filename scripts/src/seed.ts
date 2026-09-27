@@ -56,7 +56,7 @@ async function seed() {
   const insertedPatients = await db.insert(patientsTable).values(patients).returning();
   console.log(`Inserted ${insertedPatients.length} patients`);
 
-  const scans = insertedPatients.map((p, i) => {
+  const scans = insertedPatients.map((p: any, i: number) => {
     const template = scanTemplates[i % scanTemplates.length]!;
     return {
       patientId: p.id,

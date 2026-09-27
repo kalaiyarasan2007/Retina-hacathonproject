@@ -5,7 +5,12 @@ import scansRouter from "./scans.js";
 import reportsRouter from "./reports.js";
 import analyticsRouter from "./analytics.js";
 
+import authRouter from "./auth.js";
+
 const router: IRouter = Router();
+
+// Mount integrated custom authenticator routes
+router.use(authRouter);
 
 router.use(healthRouter);
 router.use("/patients", patientsRouter);

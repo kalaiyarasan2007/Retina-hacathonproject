@@ -67,3 +67,7 @@ build/
 *.zip
 *.mp4
 *.csv
+
+# Local database storage
+.data/
+**/.data/

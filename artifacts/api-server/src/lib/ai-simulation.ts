@@ -54,7 +54,7 @@ export function buildAnalysisResult(
   let confidenceScore: number;
   let heatmapPoints: HeatmapPoint[];
 
-  if (imageAnalysis) {
+  if (imageAnalysis && imageAnalysis.isRealAnalysis) {
     // Use image-derived values
     drStage         = imageAnalysis.drStage;
     confidenceScore = imageAnalysis.confidenceScore;

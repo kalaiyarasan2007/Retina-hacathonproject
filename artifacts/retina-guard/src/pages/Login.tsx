@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { useAuth, Role } from "@/lib/auth";
-import { Stethoscope, ShieldCheck, ArrowRight, Eye } from "lucide-react";
+import { useAuth } from "@/lib/auth";
+import { ShieldCheck, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
@@ -11,23 +11,40 @@ export default function Login() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!username.trim() || !password.trim()) {
+      setError("Please enter both username and password.");
+      return;
+    }
+
     setError("");
     setIsLoading(true);
 
-    setTimeout(() => {
-      let role: Role = null;
-      if (username === "admin" && password === "admin123") role = "admin";
-      if (username === "doctor" && password === "doc123") role = "doctor";
+    try {
+      const response = await fetch('/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ username, password })
+      });
 
-      if (role) {
-        login(username, role);
-      } else {
-        setError("Invalid credentials. Try admin/admin123 or doctor/doc123.");
-        setIsLoading(false);
+      if (!response.ok) {
+        throw new Error("Invalid username or password.");
       }
-    }, 800);
+
+      const data = await response.json();
+      
+      // Provide a fallback role context since backend doesn't return one anymore
+      const userRole = data.role || 'doctor';
+      login(username, userRole);
+    } catch (err: any) {
+      setError(err.message || "Invalid credentials. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -81,32 +98,7 @@ export default function Login() {
             <p className="text-muted-foreground">Sign in to access patient scans and analytics.</p>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <button 
-              type="button"
-              onClick={() => { setUsername("doctor"); setPassword("doc123"); }}
-              className={cn(
-                "p-4 rounded-2xl border-2 text-left transition-all",
-                username === "doctor" ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
-              )}
-            >
-              <Stethoscope className={cn("w-6 h-6 mb-2", username === "doctor" ? "text-primary" : "text-muted-foreground")} />
-              <div className="font-bold text-foreground">Doctor</div>
-              <div className="text-xs text-muted-foreground">Review scans</div>
-            </button>
-            <button 
-              type="button"
-              onClick={() => { setUsername("admin"); setPassword("admin123"); }}
-              className={cn(
-                "p-4 rounded-2xl border-2 text-left transition-all",
-                username === "admin" ? "border-primary bg-primary/5" : "border-border hover:border-primary/30"
-              )}
-            >
-              <Eye className={cn("w-6 h-6 mb-2", username === "admin" ? "text-primary" : "text-muted-foreground")} />
-              <div className="font-bold text-foreground">Admin</div>
-              <div className="text-xs text-muted-foreground">Manage system</div>
-            </button>
-          </div>
+
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div className="space-y-4">

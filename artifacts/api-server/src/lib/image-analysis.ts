@@ -27,50 +27,66 @@ export interface ImageAnalysisResult {
 // ─── Background Python Worker ──────────────────────────────────────────────────
 
 let pythonProcess: ChildProcess | null = null;
+let isPythonAvailable: boolean | null = null;
 let resolveQueue: ((res: string) => void)[] = [];
 let outputBuffer = "";
 
-function getPythonWorker(): ChildProcess {
+function getPythonWorker(): ChildProcess | null {
+  if (isPythonAvailable === false) return null;
+
   if (!pythonProcess) {
     const projectRoot = path.resolve(process.cwd(), "../../");
     const pythonScript = path.join(projectRoot, "predict.py");
 
-    // Spawn python process once
-    pythonProcess = spawn("python", [pythonScript], { cwd: projectRoot });
+    try {
+      // Spawn python process once
+      pythonProcess = spawn("python", [pythonScript], { cwd: projectRoot });
 
-    pythonProcess.stdout?.on("data", (data: Buffer) => {
-      outputBuffer += data.toString();
-      const lines = outputBuffer.split("\n");
-      // keep the last incomplete chunk in buffer
-      outputBuffer = lines.pop() || "";
+      pythonProcess.stdout?.on("data", (data: Buffer) => {
+        outputBuffer += data.toString();
+        const lines = outputBuffer.split("\n");
+        // keep the last incomplete chunk in buffer
+        outputBuffer = lines.pop() || "";
 
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (trimmed && resolveQueue.length > 0) {
-          const resolver = resolveQueue.shift();
-          if (resolver) resolver(trimmed);
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed && resolveQueue.length > 0) {
+            const resolver = resolveQueue.shift();
+            if (resolver) resolver(trimmed);
+          }
         }
-      }
-    });
+      });
 
-    pythonProcess.stderr?.on("data", (data: Buffer) => {
-      console.error("[Python Worker]", data.toString());
-    });
+      pythonProcess.stderr?.on("data", (data: Buffer) => {
+        const str = data.toString();
+        console.error("[Python Worker]", str);
+        if (str.includes("ModuleNotFoundError") || str.includes("No module named")) {
+          isPythonAvailable = false;
+        }
+      });
 
-    pythonProcess.stdin?.on("error", (err) => {
-      console.error("[Python Worker Stdin Error] Ignoring EPIPE crash shield:", err);
-    });
+      pythonProcess.stdin?.on("error", (err) => {
+        console.error("[Python Worker Stdin Error] Ignoring EPIPE crash shield:", err);
+      });
 
-    pythonProcess.on("error", (err) => {
-      console.error("[Python Worker Process Error]", err);
-    });
+      pythonProcess.on("error", (err) => {
+        console.error("[Python Worker Process Error]", err);
+        isPythonAvailable = false;
+      });
 
-    pythonProcess.on("close", () => {
-      console.log("[Python Worker] Process closed.");
-      pythonProcess = null;
-      // reject all pending requests
-      resolveQueue = [];
-    });
+      pythonProcess.on("close", (code) => {
+        console.log(`[Python Worker] Process closed with code ${code}.`);
+        if (code !== 0) isPythonAvailable = false;
+        pythonProcess = null;
+        // flush all pending requests
+        const queue = resolveQueue;
+        resolveQueue = [];
+        queue.forEach(resolver => resolver(""));
+      });
+    } catch {
+      isPythonAvailable = false;
+      return null;
+    }
   }
   return pythonProcess;
 }
@@ -80,7 +96,14 @@ function getPythonWorker(): ChildProcess {
 export async function analyzeRetinalImage(
   imageDataUrl: string
 ): Promise<ImageAnalysisResult> {
+  if (isPythonAvailable === false) {
+    return { drStage: 0, confidenceScore: 0, heatmapPoints: [], isRealAnalysis: false };
+  }
+
   const worker = getPythonWorker();
+  if (!worker) {
+    return { drStage: 0, confidenceScore: 0, heatmapPoints: [], isRealAnalysis: false };
+  }
   let tmpFilePath = "";
 
   try {
@@ -91,11 +114,30 @@ export async function analyzeRetinalImage(
     tmpFilePath = path.join(os.tmpdir(), `retina-scan-${Date.now()}.jpg`);
     await fs.writeFile(tmpFilePath, buffer);
 
-    // Queue request to Python worker
-    const promiseResponse = new Promise<string>((resolve) => {
-      resolveQueue.push(resolve);
-      // Send path dynamically through stdin
-      worker.stdin?.write(tmpFilePath + "\n");
+    // Queue request to Python worker with timeout
+    const promiseResponse = new Promise<string>((resolve, reject) => {
+      if (!worker || worker.killed || worker.exitCode !== null || !worker.stdin?.writable) {
+        return reject(new Error("Python worker unavailable"));
+      }
+      const timeout = setTimeout(() => {
+        reject(new Error("Python worker timed out"));
+      }, 3000);
+
+      resolveQueue.push((res) => {
+        clearTimeout(timeout);
+        if (!res) {
+          reject(new Error("Empty response from Python worker"));
+        } else {
+          resolve(res);
+        }
+      });
+
+      try {
+        worker.stdin.write(tmpFilePath + "\n");
+      } catch (e) {
+        clearTimeout(timeout);
+        reject(e);
+      }
     });
 
     const output = await promiseResponse;
