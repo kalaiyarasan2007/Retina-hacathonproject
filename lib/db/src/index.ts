@@ -8,20 +8,10 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-// Use a persistent data directory for PGlite fallback
-const dbDir = path.resolve(process.cwd(), ".data", "pglite");
-if (!fs.existsSync(dbDir)) {
-  fs.mkdirSync(dbDir, { recursive: true });
-}
+const isProduction = process.env.NODE_ENV === "production";
+const databaseUrl = process.env.DATABASE_URL;
 
-let pgliteInstance: PGlite | null = null;
-let pgliteDb: any = null;
-let pgPoolInstance: pg.Pool | null = null;
-let pgDb: any = null;
-let isPgAvailable = false;
-let initPromise: Promise<void> | null = null;
-
-// Table schema auto-creation SQL
+// Auto-provision schema SQL for tables
 const SCHEMA_SQL = `
 CREATE TABLE IF NOT EXISTS patients (
   id SERIAL PRIMARY KEY,
@@ -59,108 +49,198 @@ CREATE TABLE IF NOT EXISTS users (
 );
 `;
 
-// Helper to get or initialize PGlite
-export function getPglite() {
-  if (!pgliteInstance) {
-    try {
-      pgliteInstance = new PGlite(dbDir);
-    } catch {
-      pgliteInstance = new PGlite(); // in-memory fallback if file system is locked
-    }
-    pgliteDb = drizzlePglite(pgliteInstance, { schema });
+export type Database = ReturnType<typeof drizzlePg<typeof schema>>;
+
+let poolExport: any;
+let dbExport: any;
+
+if (isProduction) {
+  // ─── 1. PRODUCTION MODE (Render) ──────────────────────────────────────────
+  // Strictly require DATABASE_URL; do NOT initialize PGlite in production
+  if (!databaseUrl) {
+    throw new Error(
+      "DATABASE_URL environment variable must be configured in production. " +
+      "Please set DATABASE_URL in your Render environment settings."
+    );
   }
-  return { pglite: pgliteInstance, db: pgliteDb };
-}
 
-// Immediately ensure PGlite is ready with schemas
-const { pglite: earlyPglite } = getPglite();
-earlyPglite.exec(SCHEMA_SQL).catch((err) => {
-  console.warn("PGlite initial schema creation warning:", err);
-});
+  // Use the standard PostgreSQL pool & Drizzle instance exactly as intended
+  const prodPool = new Pool({ connectionString: databaseUrl });
 
-async function initializeDatabase() {
-  const { pglite } = getPglite();
-  await pglite.exec(SCHEMA_SQL);
+  // Safe startup schema initialization: ensure schema creation completes before subsequent queries run
+  let schemaInitPromise: Promise<void> | null = null;
+  const originalQuery = prodPool.query.bind(prodPool);
+  const originalConnect = prodPool.connect.bind(prodPool);
 
-  if (process.env.DATABASE_URL) {
-    try {
-      const testPool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        connectionTimeoutMillis: 1500,
-      });
-      const client = await testPool.connect();
-      await client.query("SELECT 1");
-      await client.query(SCHEMA_SQL);
-      client.release();
-
-      pgPoolInstance = testPool;
-      pgDb = drizzlePg(testPool, { schema });
-      isPgAvailable = true;
-      console.log(" Connected to external PostgreSQL database.");
-      return;
-    } catch (err: any) {
-      console.warn("⚠️ External PostgreSQL unavailable (" + (err.code || err.message) + "). Seamlessly using embedded PGlite database.");
-      isPgAvailable = false;
-    }
-  } else {
-    console.log(" Using embedded PGlite database.");
-  }
-}
-
-initPromise = initializeDatabase().catch((e) => {
-  console.error("Database initialization warning:", e);
-});
-
-// Proxy for db: delegates to pgDb if available, otherwise pgliteDb
-export const db = (new Proxy({} as any, {
-  get(_target, prop) {
-    if (isPgAvailable && pgDb) {
-      const val = pgDb[prop];
-      return typeof val === "function" ? val.bind(pgDb) : val;
-    }
-    const { db: activeDb } = getPglite();
-    const val = activeDb[prop];
-    return typeof val === "function" ? val.bind(activeDb) : val;
-  },
-}) as unknown) as ReturnType<typeof drizzlePg<typeof schema>>;
-
-// Proxy for pool: provides .query() and .connect() compatible with pg.Pool
-export const pool: any = {
-  async query(text: string, params?: any[]) {
-    await initPromise;
-    if (isPgAvailable && pgPoolInstance) {
-      try {
-        return await pgPoolInstance.query(text, params);
-      } catch (err: any) {
-        if (err.code === "ECONNREFUSED") {
-          isPgAvailable = false;
-        } else {
-          throw err;
+  function ensureSchemaReady(): Promise<void> {
+    if (!schemaInitPromise) {
+      schemaInitPromise = (async () => {
+        try {
+          await originalQuery(SCHEMA_SQL);
+          console.log("[DB] Production PostgreSQL schema initialized successfully.");
+        } catch (err: any) {
+          console.warn("[DB] Note on production schema initialization:", err.message);
         }
+      })();
+    }
+    return schemaInitPromise;
+  }
+
+  // Eagerly trigger schema initialization on startup
+  ensureSchemaReady();
+
+  // Intercept queries and connections so they safely await schema readiness
+  prodPool.query = async function (...args: any[]) {
+    await ensureSchemaReady();
+    return (originalQuery as any)(...args);
+  } as any;
+
+  prodPool.connect = async function (...args: any[]) {
+    await ensureSchemaReady();
+    return (originalConnect as any)(...args);
+  } as any;
+
+  const prodDb = drizzlePg(prodPool, { schema });
+
+  poolExport = prodPool;
+  dbExport = prodDb;
+} else if (databaseUrl && !databaseUrl.includes("localhost:5432")) {
+  // ─── 2. LOCAL DEV WITH REMOTE DATABASE_URL ────────────────────────────────
+  const devPool = new Pool({ connectionString: databaseUrl });
+
+  let schemaInitPromise: Promise<void> | null = null;
+  const originalQuery = devPool.query.bind(devPool);
+
+  function ensureSchemaReady(): Promise<void> {
+    if (!schemaInitPromise) {
+      schemaInitPromise = (async () => {
+        try {
+          await originalQuery(SCHEMA_SQL);
+          console.log("[DB] Remote PostgreSQL schema initialized successfully.");
+        } catch (err: any) {
+          console.warn("[DB] Note on schema initialization:", err.message);
+        }
+      })();
+    }
+    return schemaInitPromise;
+  }
+
+  ensureSchemaReady();
+
+  devPool.query = async function (...args: any[]) {
+    await ensureSchemaReady();
+    return (originalQuery as any)(...args);
+  } as any;
+
+  const devDb = drizzlePg(devPool, { schema });
+
+  poolExport = devPool;
+  dbExport = devDb;
+} else {
+  // ─── 3. LOCAL DEV ONLY (Lazy fallback to PGlite if local Postgres unavailable)
+  let pgliteInstance: PGlite | null = null;
+  let pgliteDb: any = null;
+  let pgPoolInstance: pg.Pool | null = null;
+  let pgDbInstance: any = null;
+  let isPgAvailable = false;
+  let initPromise: Promise<void> | null = null;
+
+  function getPglite() {
+    if (!pgliteInstance) {
+      const dbDir = path.resolve(process.cwd(), ".data", "pglite");
+      if (!fs.existsSync(dbDir)) {
+        fs.mkdirSync(dbDir, { recursive: true });
+      }
+      try {
+        pgliteInstance = new PGlite(dbDir);
+      } catch {
+        pgliteInstance = new PGlite();
+      }
+      pgliteDb = drizzlePglite(pgliteInstance, { schema });
+      pgliteInstance.exec(SCHEMA_SQL).catch(console.error);
+    }
+    return { pglite: pgliteInstance, db: pgliteDb };
+  }
+
+  async function initLocalDevDb() {
+    if (databaseUrl) {
+      try {
+        const testPool = new Pool({
+          connectionString: databaseUrl,
+          connectionTimeoutMillis: 1500,
+        });
+        const client = await testPool.connect();
+        await client.query("SELECT 1");
+        await client.query(SCHEMA_SQL);
+        client.release();
+
+        pgPoolInstance = testPool;
+        pgDbInstance = drizzlePg(testPool, { schema });
+        isPgAvailable = true;
+        console.log("Connected to local PostgreSQL database.");
+        return;
+      } catch (err: any) {
+        console.warn("[DB] Local PostgreSQL unavailable (" + (err.code || err.message) + "). Using local PGlite fallback.");
+        isPgAvailable = false;
       }
     }
-    const { pglite } = getPglite();
-    return await pglite.query(text, params);
-  },
-  async connect() {
-    await initPromise;
-    if (isPgAvailable && pgPoolInstance) {
-      try {
-        return await pgPoolInstance.connect();
-      } catch (err: any) {
-        if (err.code === "ECONNREFUSED") {
-          isPgAvailable = false;
-        } else {
-          throw err;
+    getPglite();
+  }
+
+  initPromise = initLocalDevDb().catch(console.error);
+
+  dbExport = new Proxy({} as any, {
+    get(_target, prop) {
+      if (isPgAvailable && pgDbInstance) {
+        const val = pgDbInstance[prop];
+        return typeof val === "function" ? val.bind(pgDbInstance) : val;
+      }
+      const { db: devDb } = getPglite();
+      const val = devDb[prop];
+      return typeof val === "function" ? val.bind(devDb) : val;
+    },
+  });
+
+  poolExport = {
+    async query(text: string, params?: any[]) {
+      await initPromise;
+      if (isPgAvailable && pgPoolInstance) {
+        try {
+          return await pgPoolInstance.query(text, params);
+        } catch (err: any) {
+          if (err.code === "ECONNREFUSED") {
+            isPgAvailable = false;
+          } else {
+            throw err;
+          }
         }
       }
-    }
-    const { pglite } = getPglite();
-    return {
-      query: (t: string, p?: any[]) => pglite.query(t, p),
-      release: () => {},
-    };
-  },
-};
+      const { pglite } = getPglite();
+      return await pglite.query(text, params);
+    },
+    async connect() {
+      await initPromise;
+      if (isPgAvailable && pgPoolInstance) {
+        try {
+          return await pgPoolInstance.connect();
+        } catch (err: any) {
+          if (err.code === "ECONNREFUSED") {
+            isPgAvailable = false;
+          } else {
+            throw err;
+          }
+        }
+      }
+      const { pglite } = getPglite();
+      return {
+        query: (t: string, p?: any[]) => pglite.query(t, p),
+        release: () => {},
+      };
+    },
+  };
+}
+
+export const pool = poolExport as pg.Pool;
+export const db = dbExport as Database;
 
 export * from "./schema";
